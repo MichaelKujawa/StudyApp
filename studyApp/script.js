@@ -1,3 +1,4 @@
+// ⏱️ Pomodoro Timer
 let timer;
 let isRunning = false;
 let isMuted = false;
@@ -53,7 +54,7 @@ function startTimer() {
 
       timeLeft = getDuration(currentPhase);
       updateDisplay();
-      startTimer(); // auto-continue
+      startTimer();
     }
   }, 1000);
 }
@@ -85,7 +86,6 @@ function toggleMute() {
   });
 });
 
-// Store and restore settings
 [workSelect, shortBreakSelect, longBreakSelect].forEach(select => {
   const saved = localStorage.getItem(select.id);
   if (saved) select.value = saved;
@@ -96,11 +96,21 @@ function toggleMute() {
   });
 });
 
-// Initialize
 timeLeft = getDuration("work");
 updateDisplay();
 
+// 🃏 Flashcards
 let flashcardData = JSON.parse(localStorage.getItem("flashcardData")) || { folders: {} };
+
+// Auto-upgrade old data
+for (let key in flashcardData.folders) {
+  let f = flashcardData.folders[key];
+  if (Array.isArray(f)) {
+    flashcardData.folders[key] = { starred: false, cards: f.map(q => ({ ...q, flagged: false })) };
+  } else if (!f.cards) {
+    f.cards = [];
+  }
+}
 
 const toggleBtn = document.getElementById("flashcard-toggle");
 const flashcardSection = document.getElementById("flashcards");
@@ -121,9 +131,10 @@ function saveFlashData() {
 function updateFolderSelect() {
   folderSelect.innerHTML = "";
   for (let name in flashcardData.folders) {
+    const folderObj = flashcardData.folders[name];
     const opt = document.createElement("option");
     opt.value = name;
-    opt.textContent = name;
+    opt.textContent = folderObj.starred ? `⭐ ${name}` : name;
     folderSelect.appendChild(opt);
   }
 }
@@ -132,22 +143,59 @@ function renderCards(folderName) {
   flashcardDisplay.innerHTML = "";
   if (!folderName || !flashcardData.folders[folderName]) return;
 
-  flashcardData.folders[folderName].forEach(card => {
+  const cards = flashcardData.folders[folderName].cards;
+
+  cards.forEach((card, index) => {
     const cardEl = document.createElement("div");
     cardEl.className = "flashcard";
+    if (card.flagged) cardEl.style.borderColor = "red";
+
     cardEl.innerHTML = `
       <div class="card-inner">
         <div class="card-front">${card.question}</div>
         <div class="card-back">${card.answer}</div>
       </div>
+      <div class="card-actions">
+        <button class="edit-btn">✏️</button>
+        <button class="delete-btn">🗑️</button>
+        <button class="flag-btn">${card.flagged ? "🚩" : "⚐"}</button>
+      </div>
     `;
-    cardEl.addEventListener("click", () => {
+
+    cardEl.querySelector(".card-inner").addEventListener("click", () => {
       cardEl.classList.toggle("flipped");
     });
+
+    cardEl.querySelector(".delete-btn").addEventListener("click", () => {
+      if (confirm("Delete this card?")) {
+        cards.splice(index, 1);
+        saveFlashData();
+        renderCards(folderName);
+      }
+    });
+
+    cardEl.querySelector(".edit-btn").addEventListener("click", () => {
+      const newQ = prompt("Edit Question", card.question);
+      const newA = prompt("Edit Answer", card.answer);
+      if (newQ && newA) {
+        card.question = newQ;
+        card.answer = newA;
+        saveFlashData();
+        renderCards(folderName);
+      }
+    });
+
+    cardEl.querySelector(".flag-btn").addEventListener("click", () => {
+      card.flagged = !card.flagged;
+      saveFlashData();
+      renderCards(folderName);
+    });
+
     flashcardDisplay.appendChild(cardEl);
   });
 }
 
+// Toggle Flashcard Section
 toggleBtn.addEventListener("click", () => {
   const visible = flashcardSection.style.display === "block";
   flashcardSection.style.display = visible ? "none" : "block";
@@ -161,7 +209,7 @@ createFolderBtn.addEventListener("click", () => {
 confirmFolderBtn.addEventListener("click", () => {
   const name = newFolderName.value.trim();
   if (!name || flashcardData.folders[name]) return;
-  flashcardData.folders[name] = [];
+  flashcardData.folders[name] = { starred: false, cards: [] };
   newFolderName.value = "";
   newFolderForm.style.display = "none";
   updateFolderSelect();
@@ -177,7 +225,7 @@ flashcardForm.addEventListener("submit", e => {
   const a = answerInput.value.trim();
   if (!folder || !q || !a) return;
 
-  flashcardData.folders[folder].push({ question: q, answer: a });
+  flashcardData.folders[folder].cards.push({ question: q, answer: a, flagged: false });
   questionInput.value = "";
   answerInput.value = "";
   renderCards(folder);
@@ -188,7 +236,24 @@ folderSelect.addEventListener("change", () => {
   renderCards(folderSelect.value);
 });
 
-// Init
+document.getElementById("star-folder-btn").addEventListener("click", () => {
+  const name = folderSelect.value;
+  if (!name) return;
+  flashcardData.folders[name].starred = !flashcardData.folders[name].starred;
+  saveFlashData();
+  updateFolderSelect();
+});
+
+document.getElementById("delete-folder-btn").addEventListener("click", () => {
+  const name = folderSelect.value;
+  if (!name || !confirm(`Delete folder "${name}"?`)) return;
+  delete flashcardData.folders[name];
+  saveFlashData();
+  updateFolderSelect();
+  renderCards(folderSelect.value);
+});
+
+// INIT
 updateFolderSelect();
 renderCards(folderSelect.value);
 
