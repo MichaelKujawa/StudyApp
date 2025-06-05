@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pomodoro Timer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <section id="pomodoro">
+      <h1>Pomodoro Timer</h1>
+
+      <div id="timer-settings">
+        <label>Work:
+          <select id="work-duration">
+            <option value="900">15 min</option>
+            <option value="1500" selected>25 min</option>
+            <option value="2700">45 min</option>
+          </select>
+        </label>
+        <label>Short Break:
+          <select id="short-break-duration">
+            <option value="300" selected>5 min</option>
+            <option value="600">10 min</option>
+          </select>
+        </label>
+        <label>Long Break:
+          <select id="long-break-duration">
+            <option value="900" selected>15 min</option>
+            <option value="1500">25 min</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="timer-display">25:00</div>
+      <div id="controls">
+        <button id="start-btn">Start</button>
+        <button id="pause-btn">Pause</button>
+        <button id="reset-btn">Reset</button>
+        <button id="mute-btn">🔈</button>
+      </div>
+    </section>
+
+    <!-- Flashcards Toggle Button -->
+    <div id="flash-toggle-wrap">
+      <button id="flashcard-toggle">🃏 Flashcards</button>
+    </div>
+
+    <!-- Flashcard Section (Initially Hidden) -->
+    <section id="flashcards" style="display: none;">
+      <div id="folder-bar">
+        <select id="folder-select"></select>
+        <button id="create-folder-btn">➕</button>
+      </div>
+
+      <div id="new-folder-form" style="display: none;">
+        <input type="text" id="new-folder-name" placeholder="Enter folder name" />
+        <button id="confirm-create-folder">Create</button>
+      </div>
+
+      <form id="flashcard-form">
+        <input type="text" id="question" placeholder="Question" required />
+        <input type="text" id="answer" placeholder="Answer" required />
+        <button type="submit">Add Card</button>
+      </form>
+
+      <div id="flashcard-display"></div>
+    </section>
+
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
