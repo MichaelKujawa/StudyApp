@@ -155,3 +155,8 @@ body {
   margin: 1rem auto;
   display: inline-block;
 }
+
+#study-info {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}

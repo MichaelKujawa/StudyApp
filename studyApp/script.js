@@ -64,6 +64,14 @@ function pauseTimer() {
   isRunning = false;
 }
 
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+
 function resetTimer() {
   pauseTimer();
   currentPhase = "work";
@@ -197,10 +205,16 @@ function renderCards(folderName) {
 
 // Toggle Flashcard Section
 toggleBtn.addEventListener("click", () => {
+  studySection.style.display = "none";
+
   const visible = flashcardSection.style.display === "block";
   flashcardSection.style.display = visible ? "none" : "block";
-  if (!visible) renderCards(folderSelect.value);
+
+  if (!visible) {
+    renderCards(folderSelect.value);
+  }
 });
+
 
 createFolderBtn.addEventListener("click", () => {
   newFolderForm.style.display = "block";
@@ -271,6 +285,9 @@ const flipBtn = document.getElementById("flip-card");
 const exitBtn = document.getElementById("exit-study");
 const flaggedOnlyToggle = document.getElementById("flagged-only-toggle");
 
+const progressTracker = document.getElementById("progress-tracker");
+const shuffleToggle = document.getElementById("shuffle-toggle");
+
 
 document.getElementById("start-study-btn").addEventListener("click", () => {
   const folder = folderSelect.value;
@@ -278,6 +295,7 @@ document.getElementById("start-study-btn").addEventListener("click", () => {
 
   currentStudyCards = [...flashcardData.folders[folder].cards];
   showFlaggedOnly = flaggedOnlyToggle.checked;
+
   if (showFlaggedOnly) {
     currentStudyCards = currentStudyCards.filter(c => c.flagged);
   }
@@ -287,11 +305,16 @@ document.getElementById("start-study-btn").addEventListener("click", () => {
     return;
   }
 
+  if (shuffleToggle.checked) {
+    shuffleArray(currentStudyCards);
+  }
+
   flashcardSection.style.display = "none";
   studySection.style.display = "block";
   currentStudyIndex = 0;
   updateStudyCard();
 });
+
 
 exitBtn.addEventListener("click", () => {
   studySection.style.display = "none";
@@ -304,10 +327,11 @@ function updateStudyCard() {
 
   studyFront.textContent = card.question;
   studyBack.textContent = card.answer;
-
-  // Reset flip
   studyCard.classList.remove("flipped");
+
+  progressTracker.textContent = `Card ${currentStudyIndex + 1} of ${currentStudyCards.length}`;
 }
+
 
 flipBtn.addEventListener("click", () => {
   studyCard.classList.toggle("flipped");
