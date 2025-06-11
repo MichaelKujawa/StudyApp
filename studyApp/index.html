@@ -56,6 +56,11 @@
         <button id="delete-folder-btn">🗑️</button>
       </div>
 
+      <div id="study-controls">
+        <button id="start-study-btn">📖 Start Studying</button>
+      </div>
+
+
       <div id="new-folder-form" style="display: none;">
         <input type="text" id="new-folder-name" placeholder="Enter folder name" />
         <button id="confirm-create-folder">Create</button>
@@ -69,6 +74,28 @@
 
       <div id="flashcard-display"></div>
     </section>
+
+    <section id="study-mode" style="display: none;">
+      <h2>Study Mode</h2>
+      <div id="study-card" class="flashcard">
+        <div class="card-inner">
+          <div class="card-front" id="study-front"></div>
+          <div class="card-back" id="study-back"></div>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button id="prev-card">⬅️ Prev</button>
+        <button id="flip-card">🔄 Flip</button>
+        <button id="next-card">Next ➡️</button>
+      </div>
+
+      <div class="card-actions">
+        <label><input type="checkbox" id="flagged-only-toggle" /> Show only flagged</label>
+        <button id="exit-study">🚪 Exit Study Mode</button>
+      </div>
+    </section>
+
   </main>
   <script src="script.js"></script>
 </body>

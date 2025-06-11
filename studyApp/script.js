@@ -253,6 +253,93 @@ document.getElementById("delete-folder-btn").addEventListener("click", () => {
   renderCards(folderSelect.value);
 });
 
+// Study Mode state
+let currentStudyIndex = 0;
+let currentStudyCards = [];
+let showFlaggedOnly = false;
+
+const studySection = document.getElementById("study-mode");
+const flashSection = document.getElementById("flashcards");
+
+const studyFront = document.getElementById("study-front");
+const studyBack = document.getElementById("study-back");
+const studyCard = document.getElementById("study-card");
+
+const prevBtn = document.getElementById("prev-card");
+const nextBtn = document.getElementById("next-card");
+const flipBtn = document.getElementById("flip-card");
+const exitBtn = document.getElementById("exit-study");
+const flaggedOnlyToggle = document.getElementById("flagged-only-toggle");
+
+
+document.getElementById("start-study-btn").addEventListener("click", () => {
+  const folder = folderSelect.value;
+  if (!folder || !flashcardData.folders[folder]) return;
+
+  currentStudyCards = [...flashcardData.folders[folder].cards];
+  showFlaggedOnly = flaggedOnlyToggle.checked;
+  if (showFlaggedOnly) {
+    currentStudyCards = currentStudyCards.filter(c => c.flagged);
+  }
+
+  if (currentStudyCards.length === 0) {
+    alert("No cards to study.");
+    return;
+  }
+
+  flashcardSection.style.display = "none";
+  studySection.style.display = "block";
+  currentStudyIndex = 0;
+  updateStudyCard();
+});
+
+exitBtn.addEventListener("click", () => {
+  studySection.style.display = "none";
+  flashcardSection.style.display = "block";
+});
+
+function updateStudyCard() {
+  const card = currentStudyCards[currentStudyIndex];
+  if (!card) return;
+
+  studyFront.textContent = card.question;
+  studyBack.textContent = card.answer;
+
+  // Reset flip
+  studyCard.classList.remove("flipped");
+}
+
+flipBtn.addEventListener("click", () => {
+  studyCard.classList.toggle("flipped");
+});
+
+prevBtn.addEventListener("click", () => {
+  if (currentStudyIndex > 0) {
+    currentStudyIndex--;
+    updateStudyCard();
+  }
+});
+
+nextBtn.addEventListener("click", () => {
+  if (currentStudyIndex < currentStudyCards.length - 1) {
+    currentStudyIndex++;
+    updateStudyCard();
+  }
+});
+
+flaggedOnlyToggle.addEventListener("change", () => {
+  const folder = folderSelect.value;
+  if (!folder) return;
+  currentStudyCards = [...flashcardData.folders[folder].cards];
+  showFlaggedOnly = flaggedOnlyToggle.checked;
+  if (showFlaggedOnly) {
+    currentStudyCards = currentStudyCards.filter(c => c.flagged);
+  }
+  currentStudyIndex = 0;
+  updateStudyCard();
+});
+
+
 // INIT
 updateFolderSelect();
 renderCards(folderSelect.value);

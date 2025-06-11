@@ -124,3 +124,34 @@ body {
   border: none;
   font-size: 1.2rem;
 }
+
+#study-mode {
+  margin-top: 2rem;
+}
+
+#study-card {
+  margin: 1rem auto;
+}
+
+#study-card .card-front, #study-card .card-back {
+  font-size: 1.3rem;
+}
+
+#study-controls {
+  margin: 1rem 0;
+}
+
+#start-study-btn {
+  padding: 0.6rem 1.2rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+#study-mode {
+  text-align: center;
+}
+
+#study-card {
+  margin: 1rem auto;
+  display: inline-block;
+}
