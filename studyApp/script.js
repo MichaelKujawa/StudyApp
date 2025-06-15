@@ -1,370 +1,303 @@
-// ⏱️ Pomodoro Timer
-let timer;
-let isRunning = false;
-let isMuted = false;
-let currentPhase = 'work';
-let workSessions = 0;
-let timeLeft;
+// UTILITIES
+const $ = id => document.getElementById(id);
+const modals = document.querySelectorAll('.modal');
 
-const timerDisplay = document.getElementById("timer-display");
-const startBtn = document.getElementById("start-btn");
-const pauseBtn = document.getElementById("pause-btn");
-const resetBtn = document.getElementById("reset-btn");
-const muteBtn = document.getElementById("mute-btn");
+// STATE
+let flashData = JSON.parse(localStorage.getItem('flashData')) || { folders: {} };
+let lastFolder = localStorage.getItem('lastFolder') || null;
+let studyList = [], studyIndex = 0;
+let timer = null;
+let timerState = {
+  work: 1500, shortBreak: 300, longBreak: 900,
+  currentPhase: 'work', remaining: 1500, sessions: 0, isRunning: false, alarm: true
+};
+let savedSettings = JSON.parse(localStorage.getItem('pomodoro-settings')) || null;
 
-const alarmSound = new Audio("sounds/alarm.mp3");
-
-const workSelect = document.getElementById("work-duration");
-const shortBreakSelect = document.getElementById("short-break-duration");
-const longBreakSelect = document.getElementById("long-break-duration");
-
-function getDuration(type) {
-  if (type === 'work') return parseInt(workSelect.value);
-  if (type === 'break') return parseInt(shortBreakSelect.value);
-  if (type === 'long-break') return parseInt(longBreakSelect.value);
-  return 1500;
+// VIEW SWITCHING
+function switchView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('visible'));
+  $(viewId).classList.add('visible');
 }
 
-function updateDisplay() {
-  const mins = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-  const secs = String(timeLeft % 60).padStart(2, "0");
-  timerDisplay.textContent = `${mins}:${secs}`;
+// MODALS
+function showModal(id) {
+  modals.forEach(m => m.style.display = 'none');
+  $(id).style.display = 'flex';
+}
+function closeModal(id) { $(id).style.display = 'none'; }
+
+// THEME
+$('theme-toggle').addEventListener('click', () => document.body.classList.toggle('dark'));
+
+// HOME BUTTONS
+$('start-btn').addEventListener('click', () => {
+  if (savedSettings) showModal('last-settings-modal');
+  else showModal('settings-modal');
+});
+
+$('flashcard-btn').addEventListener('click', () => {
+  switchView('flash-view');
+  buildFolderDropdown();
+});
+
+// SETTINGS
+$('cancel-settings-btn').addEventListener('click', () => closeModal('settings-modal'));
+$('cancel-last-btn').addEventListener('click', () => closeModal('last-settings-modal'));
+$('edit-settings-btn').addEventListener('click', () => { closeModal('last-settings-modal'); showModal('settings-modal'); });
+
+$('use-last-btn').addEventListener('click', () => {
+  applySettings(savedSettings);
+  startTimer();
+  closeModal('last-settings-modal');
+  switchView('timer-view');
+});
+
+$('settings-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const newSettings = {
+    work: parseInt($('work-duration').value),
+    shortBreak: parseInt($('short-break-duration').value),
+    longBreak: parseInt($('long-break-duration').value),
+    alarm: $('alarm-toggle').checked
+  };
+  savedSettings = newSettings;
+  localStorage.setItem('pomodoro-settings', JSON.stringify(savedSettings));
+  applySettings(newSettings);
+  startTimer();
+  closeModal('settings-modal');
+  switchView('timer-view');
+});
+
+function applySettings(settings) {
+  Object.assign(timerState, settings);
+  timerState.remaining = settings.work;
+  timerState.currentPhase = 'work';
+  timerState.sessions = 0;
+  updateDisplays();
 }
 
+// TIMER
 function startTimer() {
-  if (isRunning) return;
-  isRunning = true;
-
+  if (timerState.isRunning) return;
+  timerState.isRunning = true;
+  $('pause-resume-btn').textContent = 'Pause';
   timer = setInterval(() => {
-    if (timeLeft > 0) {
-      timeLeft--;
-      updateDisplay();
+    if (timerState.remaining > 0) {
+      timerState.remaining--;
+      updateDisplays();
     } else {
       clearInterval(timer);
-      isRunning = false;
-
-      if (!isMuted) alarmSound.play();
-
-      if (currentPhase === "work") {
-        workSessions++;
-        currentPhase = workSessions % 3 === 0 ? "long-break" : "break";
-      } else {
-        currentPhase = "work";
-      }
-
-      timeLeft = getDuration(currentPhase);
-      updateDisplay();
-      startTimer();
+      timerState.isRunning = false;
+      phaseChange();
     }
   }, 1000);
 }
 
-function pauseTimer() {
+function phaseChange() {
+  if (timerState.alarm) new Audio('assets/alarm.mp3').play();
+  timerState.currentPhase = (timerState.currentPhase === 'work')
+    ? ((++timerState.sessions % 3 === 0) ? 'longBreak' : 'shortBreak')
+    : 'work';
+  timerState.remaining = timerState[timerState.currentPhase];
+  updateDisplays();
+  startTimer();
+}
+
+function updateDisplays() {
+  const min = Math.floor(timerState.remaining / 60).toString().padStart(2, '0');
+  const sec = (timerState.remaining % 60).toString().padStart(2, '0');
+  $('timer-display').textContent = `${min}:${sec}`;
+  $('home-timer-display').textContent = `${min}:${sec}`;
+  const total = timerState[timerState.currentPhase];
+  const pct = 360 - ((timerState.remaining / total) * 360);
+  document.querySelectorAll('.timer-progress').forEach(el => {
+    el.style.background = `conic-gradient(var(--accent) ${pct}deg, var(--accent-soft) ${pct}deg 360deg)`;
+  });
+}
+
+$('pause-resume-btn').addEventListener('click', () => {
+  if (timerState.isRunning) {
+    clearInterval(timer);
+    timerState.isRunning = false;
+    $('pause-resume-btn').textContent = 'Resume';
+  } else {
+    startTimer();
+  }
+});
+
+$('reset-timer-btn').addEventListener('click', () => {
   clearInterval(timer);
-  isRunning = false;
-}
+  timerState.isRunning = false;
+  timerState.remaining = timerState[timerState.currentPhase];
+  updateDisplays();
+  switchView('home-view');
+});
 
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-}
+updateDisplays();
 
+// FOLDER DROPDOWN
+function buildFolderDropdown() {
+  const menu = $('folder-menu');
+  menu.innerHTML = '';
 
-function resetTimer() {
-  pauseTimer();
-  currentPhase = "work";
-  workSessions = 0;
-  timeLeft = getDuration(currentPhase);
-  updateDisplay();
-}
-
-function toggleMute() {
-  isMuted = !isMuted;
-  muteBtn.textContent = isMuted ? "🔇" : "🔈";
-}
-
-[startBtn, pauseBtn, resetBtn, muteBtn].forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (btn === startBtn) startTimer();
-    if (btn === pauseBtn) pauseTimer();
-    if (btn === resetBtn) resetTimer();
-    if (btn === muteBtn) toggleMute();
+  Object.keys(flashData.folders).forEach(folder => {
+    const btn = document.createElement('button');
+    btn.textContent = folder;
+    btn.addEventListener('click', () => selectFolder(folder));
+    menu.appendChild(btn);
   });
-});
 
-[workSelect, shortBreakSelect, longBreakSelect].forEach(select => {
-  const saved = localStorage.getItem(select.id);
-  if (saved) select.value = saved;
+  const plus = document.createElement('button');
+  plus.textContent = '➕ Add Folder';
+  plus.addEventListener('click', () => showModal('add-folder-modal'));
+  menu.appendChild(plus);
 
-  select.addEventListener("change", () => {
-    localStorage.setItem(select.id, select.value);
-    resetTimer();
-  });
-});
-
-timeLeft = getDuration("work");
-updateDisplay();
-
-// 🃏 Flashcards
-let flashcardData = JSON.parse(localStorage.getItem("flashcardData")) || { folders: {} };
-
-// Auto-upgrade old data
-for (let key in flashcardData.folders) {
-  let f = flashcardData.folders[key];
-  if (Array.isArray(f)) {
-    flashcardData.folders[key] = { starred: false, cards: f.map(q => ({ ...q, flagged: false })) };
-  } else if (!f.cards) {
-    f.cards = [];
+  if (Object.keys(flashData.folders).length > 0) {
+    const del = document.createElement('button');
+    del.textContent = '🗑 Delete Folder';
+    del.addEventListener('click', deleteFolderPrompt);
+    menu.appendChild(del);
   }
 }
 
-const toggleBtn = document.getElementById("flashcard-toggle");
-const flashcardSection = document.getElementById("flashcards");
-const folderSelect = document.getElementById("folder-select");
-const createFolderBtn = document.getElementById("create-folder-btn");
-const confirmFolderBtn = document.getElementById("confirm-create-folder");
-const newFolderForm = document.getElementById("new-folder-form");
-const newFolderName = document.getElementById("new-folder-name");
-const flashcardForm = document.getElementById("flashcard-form");
-const questionInput = document.getElementById("question");
-const answerInput = document.getElementById("answer");
-const flashcardDisplay = document.getElementById("flashcard-display");
+$('folder-toggle').addEventListener('click', () => {
+  $('folder-menu').style.display = ($('folder-menu').style.display === 'block') ? 'none' : 'block';
+});
 
-function saveFlashData() {
-  localStorage.setItem("flashcardData", JSON.stringify(flashcardData));
-}
+$('confirm-add-folder').addEventListener('click', () => {
+  const name = $('new-folder-name').value.trim();
+  if (!name || flashData.folders[name]) return;
+  flashData.folders[name] = [];
+  saveFlash();
+  buildFolderDropdown();
+  closeModal('add-folder-modal');
+});
 
-function updateFolderSelect() {
-  folderSelect.innerHTML = "";
-  for (let name in flashcardData.folders) {
-    const folderObj = flashcardData.folders[name];
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = folderObj.starred ? `⭐ ${name}` : name;
-    folderSelect.appendChild(opt);
+$('cancel-add-folder').addEventListener('click', () => closeModal('add-folder-modal'));
+
+function deleteFolderPrompt() {
+  if (!lastFolder) return alert("No folder selected.");
+  if (confirm(`Delete folder "${lastFolder}"?`)) {
+    delete flashData.folders[lastFolder];
+    saveFlash();
+    lastFolder = null;
+    localStorage.removeItem('lastFolder');
+    buildFolderDropdown();
+    $('folder-toggle').textContent = "Select Set ▾";
+    $('flashcard-grid').innerHTML = '';
+    $('study-bar').classList.add('hidden');
   }
 }
 
-function renderCards(folderName) {
-  flashcardDisplay.innerHTML = "";
-  if (!folderName || !flashcardData.folders[folderName]) return;
-
-  const cards = flashcardData.folders[folderName].cards;
-
-  cards.forEach((card, index) => {
-    const cardEl = document.createElement("div");
-    cardEl.className = "flashcard";
-    if (card.flagged) cardEl.style.borderColor = "red";
-
-    cardEl.innerHTML = `
-      <div class="card-inner">
-        <div class="card-front">${card.question}</div>
-        <div class="card-back">${card.answer}</div>
-      </div>
-      <div class="card-actions">
-        <button class="edit-btn">✏️</button>
-        <button class="delete-btn">🗑️</button>
-        <button class="flag-btn">${card.flagged ? "🚩" : "⚐"}</button>
-      </div>
-    `;
-
-    cardEl.querySelector(".card-inner").addEventListener("click", () => {
-      cardEl.classList.toggle("flipped");
-    });
-
-    cardEl.querySelector(".delete-btn").addEventListener("click", () => {
-      if (confirm("Delete this card?")) {
-        cards.splice(index, 1);
-        saveFlashData();
-        renderCards(folderName);
-      }
-    });
-
-    cardEl.querySelector(".edit-btn").addEventListener("click", () => {
-      const newQ = prompt("Edit Question", card.question);
-      const newA = prompt("Edit Answer", card.answer);
-      if (newQ && newA) {
-        card.question = newQ;
-        card.answer = newA;
-        saveFlashData();
-        renderCards(folderName);
-      }
-    });
-
-    cardEl.querySelector(".flag-btn").addEventListener("click", () => {
-      card.flagged = !card.flagged;
-      saveFlashData();
-      renderCards(folderName);
-    });
-
-    flashcardDisplay.appendChild(cardEl);
-  });
-}
-
-// Toggle Flashcard Section
-toggleBtn.addEventListener("click", () => {
-  studySection.style.display = "none";
-
-  const visible = flashcardSection.style.display === "block";
-  flashcardSection.style.display = visible ? "none" : "block";
-
-  if (!visible) {
-    renderCards(folderSelect.value);
-  }
-});
-
-
-createFolderBtn.addEventListener("click", () => {
-  newFolderForm.style.display = "block";
-});
-
-confirmFolderBtn.addEventListener("click", () => {
-  const name = newFolderName.value.trim();
-  if (!name || flashcardData.folders[name]) return;
-  flashcardData.folders[name] = { starred: false, cards: [] };
-  newFolderName.value = "";
-  newFolderForm.style.display = "none";
-  updateFolderSelect();
-  folderSelect.value = name;
-  renderCards(name);
-  saveFlashData();
-});
-
-flashcardForm.addEventListener("submit", e => {
-  e.preventDefault();
-  const folder = folderSelect.value;
-  const q = questionInput.value.trim();
-  const a = answerInput.value.trim();
-  if (!folder || !q || !a) return;
-
-  flashcardData.folders[folder].cards.push({ question: q, answer: a, flagged: false });
-  questionInput.value = "";
-  answerInput.value = "";
+function selectFolder(folder) {
+  lastFolder = folder;
+  localStorage.setItem('lastFolder', folder);
+  $('folder-toggle').textContent = folder + ' ▾';
+  $('folder-menu').style.display = 'none';
+  $('study-bar').classList.remove('hidden');
   renderCards(folder);
-  saveFlashData();
-});
-
-folderSelect.addEventListener("change", () => {
-  renderCards(folderSelect.value);
-});
-
-document.getElementById("star-folder-btn").addEventListener("click", () => {
-  const name = folderSelect.value;
-  if (!name) return;
-  flashcardData.folders[name].starred = !flashcardData.folders[name].starred;
-  saveFlashData();
-  updateFolderSelect();
-});
-
-document.getElementById("delete-folder-btn").addEventListener("click", () => {
-  const name = folderSelect.value;
-  if (!name || !confirm(`Delete folder "${name}"?`)) return;
-  delete flashcardData.folders[name];
-  saveFlashData();
-  updateFolderSelect();
-  renderCards(folderSelect.value);
-});
-
-// Study Mode state
-let currentStudyIndex = 0;
-let currentStudyCards = [];
-let showFlaggedOnly = false;
-
-const studySection = document.getElementById("study-mode");
-const flashSection = document.getElementById("flashcards");
-
-const studyFront = document.getElementById("study-front");
-const studyBack = document.getElementById("study-back");
-const studyCard = document.getElementById("study-card");
-
-const prevBtn = document.getElementById("prev-card");
-const nextBtn = document.getElementById("next-card");
-const flipBtn = document.getElementById("flip-card");
-const exitBtn = document.getElementById("exit-study");
-const flaggedOnlyToggle = document.getElementById("flagged-only-toggle");
-
-const progressTracker = document.getElementById("progress-tracker");
-const shuffleToggle = document.getElementById("shuffle-toggle");
-
-
-document.getElementById("start-study-btn").addEventListener("click", () => {
-  const folder = folderSelect.value;
-  if (!folder || !flashcardData.folders[folder]) return;
-
-  currentStudyCards = [...flashcardData.folders[folder].cards];
-  showFlaggedOnly = flaggedOnlyToggle.checked;
-
-  if (showFlaggedOnly) {
-    currentStudyCards = currentStudyCards.filter(c => c.flagged);
-  }
-
-  if (currentStudyCards.length === 0) {
-    alert("No cards to study.");
-    return;
-  }
-
-  if (shuffleToggle.checked) {
-    shuffleArray(currentStudyCards);
-  }
-
-  flashcardSection.style.display = "none";
-  studySection.style.display = "block";
-  currentStudyIndex = 0;
-  updateStudyCard();
-});
-
-
-exitBtn.addEventListener("click", () => {
-  studySection.style.display = "none";
-  flashcardSection.style.display = "block";
-});
-
-function updateStudyCard() {
-  const card = currentStudyCards[currentStudyIndex];
-  if (!card) return;
-
-  studyFront.textContent = card.question;
-  studyBack.textContent = card.answer;
-  studyCard.classList.remove("flipped");
-
-  progressTracker.textContent = `Card ${currentStudyIndex + 1} of ${currentStudyCards.length}`;
 }
 
+function renderCards(folder) {
+  const grid = $('flashcard-grid');
+  grid.innerHTML = '';
+  flashData.folders[folder].forEach((card, index) => {
+    const div = document.createElement('div');
+    div.className = 'flashcard';
+    div.textContent = card.question;
 
-flipBtn.addEventListener("click", () => {
-  studyCard.classList.toggle("flipped");
-});
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '🗑';
+    del.addEventListener('click', () => deleteCard(folder, index));
+    div.appendChild(del);
 
-prevBtn.addEventListener("click", () => {
-  if (currentStudyIndex > 0) {
-    currentStudyIndex--;
-    updateStudyCard();
+    grid.appendChild(div);
+  });
+
+  if (flashData.folders[folder].length === 0) {
+    $('study-bar').classList.add('hidden');
   }
+}
+
+function deleteCard(folder, index) {
+  if (!confirm("Delete this card?")) return;
+  flashData.folders[folder].splice(index, 1);
+  saveFlash();
+  renderCards(folder);
+}
+
+function saveFlash() {
+  localStorage.setItem('flashData', JSON.stringify(flashData));
+}
+
+// ADDING FLASHCARDS
+$('add-flashcard-btn').addEventListener('click', () => {
+  if (!lastFolder) return alert("Please select a folder first.");
+  showModal('add-card-modal');
 });
 
-nextBtn.addEventListener("click", () => {
-  if (currentStudyIndex < currentStudyCards.length - 1) {
-    currentStudyIndex++;
-    updateStudyCard();
+$('confirm-add-card').addEventListener('click', () => {
+  const q = $('new-question').value.trim();
+  const a = $('new-answer').value.trim();
+  if (!q || !a) return;
+  flashData.folders[lastFolder].push({ question: q, answer: a, flagged: false });
+  saveFlash();
+  renderCards(lastFolder);
+  $('new-question').value = '';
+  $('new-answer').value = '';
+  closeModal('add-card-modal');
+});
+
+$('cancel-add-card').addEventListener('click', () => closeModal('add-card-modal'));
+$('exit-flash-btn').addEventListener('click', () => switchView('home-view'));
+
+// STUDY MODE
+$('start-study-btn').addEventListener('click', () => {
+  if (!lastFolder) return;
+  studyList = [...flashData.folders[lastFolder]];
+  studyIndex = 0;
+  renderStudyCard();
+  switchView('study-view');
+});
+
+function renderStudyCard() {
+  const card = studyList[studyIndex];
+  $('study-front').textContent = card.question;
+  $('study-back').textContent = card.answer;
+  $('flag-btn').textContent = card.flagged ? '🚩' : '⚐';
+  $('study-card').classList.remove('flipped');
+  $('study-counter').textContent = `${studyIndex+1} / ${studyList.length}`;
+}
+
+$('study-card').addEventListener('click', () => {
+  $('study-card').classList.toggle('flipped');
+});
+
+$('flag-btn').addEventListener('click', () => {
+  const card = studyList[studyIndex];
+  card.flagged = !card.flagged;
+  $('flag-btn').textContent = card.flagged ? '🚩' : '⚐';
+  saveFlash();
+});
+
+$('next-btn').addEventListener('click', () => {
+  if (studyIndex < studyList.length-1) studyIndex++;
+  renderStudyCard();
+});
+
+$('prev-btn').addEventListener('click', () => {
+  if (studyIndex > 0) studyIndex--;
+  renderStudyCard();
+});
+
+$('exit-study-btn').addEventListener('click', () => switchView('flash-view'));
+
+$('shuffle-btn').addEventListener('click', () => {
+  for (let i = studyList.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [studyList[i], studyList[j]] = [studyList[j], studyList[i]];
   }
+  studyIndex = 0;
+  renderStudyCard();
 });
-
-flaggedOnlyToggle.addEventListener("change", () => {
-  const folder = folderSelect.value;
-  if (!folder) return;
-  currentStudyCards = [...flashcardData.folders[folder].cards];
-  showFlaggedOnly = flaggedOnlyToggle.checked;
-  if (showFlaggedOnly) {
-    currentStudyCards = currentStudyCards.filter(c => c.flagged);
-  }
-  currentStudyIndex = 0;
-  updateStudyCard();
-});
-
-
-// INIT
-updateFolderSelect();
-renderCards(folderSelect.value);
-

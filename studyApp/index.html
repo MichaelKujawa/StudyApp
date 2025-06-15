@@ -1,109 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pomodoro Timer</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Pomodoro + Flashcards V3.1</title>
+  <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
-  <main>
-    <section id="pomodoro">
-      <h1>Pomodoro Timer</h1>
+  <div id="app">
 
-      <div id="timer-settings">
-        <label>Work:
-          <select id="work-duration">
-            <option value="900">15 min</option>
-            <option value="1500" selected>25 min</option>
-            <option value="2700">45 min</option>
-          </select>
-        </label>
-        <label>Short Break:
-          <select id="short-break-duration">
-            <option value="300" selected>5 min</option>
-            <option value="600">10 min</option>
-          </select>
-        </label>
-        <label>Long Break:
-          <select id="long-break-duration">
-            <option value="900" selected>15 min</option>
-            <option value="1500">25 min</option>
-          </select>
-        </label>
-      </div>
+    <!-- Header -->
+    <header class="header">
+      <div id="theme-toggle" class="toggle-theme">🌓</div>
+      <button class="pill-btn" id="login-btn">Log In</button>
+    </header>
 
-      <div id="timer-display">25:00</div>
-      <div id="controls">
-        <button id="start-btn">Start</button>
-        <button id="pause-btn">Pause</button>
-        <button id="reset-btn">Reset</button>
-        <button id="mute-btn">🔈</button>
-      </div>
-    </section>
+    <!-- Main Container -->
+    <main class="container">
 
-    <!-- Flashcards Toggle Button -->
-    <div id="flash-toggle-wrap">
-      <button id="flashcard-toggle">🃏 Flashcards</button>
-    </div>
-
-    <!-- Flashcard Section (Initially Hidden) -->
-    <section id="flashcards" style="display: none;">
-      <div id="folder-bar">
-        <select id="folder-select"></select>
-        <button id="create-folder-btn">➕</button>
-        <button id="star-folder-btn">⭐</button>
-        <button id="delete-folder-btn">🗑️</button>
-      </div>
-
-      <div id="study-controls">
-        <button id="start-study-btn">📖 Start Studying</button>
-      </div>
-
-
-      <div id="new-folder-form" style="display: none;">
-        <input type="text" id="new-folder-name" placeholder="Enter folder name" />
-        <button id="confirm-create-folder">Create</button>
-      </div>
-
-      <form id="flashcard-form">
-        <input type="text" id="question" placeholder="Question" required />
-        <input type="text" id="answer" placeholder="Answer" required />
-        <button type="submit">Add Card</button>
-      </form>
-
-      <div id="flashcard-display"></div>
-    </section>
-
-    <section id="study-mode" style="display: none;">
-      <h2>Study Mode</h2>
-
-      <div id="study-info">
-        <span id="progress-tracker"></span>
-        <label><input type="checkbox" id="shuffle-toggle" /> Shuffle</label>
-      </div>
-
-      <div id="study-card" class="flashcard">
-        <div class="card-inner">
-          <div class="card-front" id="study-front"></div>
-          <div class="card-back" id="study-back"></div>
+      <!-- Home View -->
+      <section id="home-view" class="view visible">
+        <div class="timer-circle">
+          <div class="timer-progress"></div>
+          <div class="timer-display" id="home-timer-display">25:00</div>
         </div>
-      </div>
+        <div class="navigation-btns">
+          <button id="start-btn" class="pill-btn">Start Timer</button>
+          <button id="flashcard-btn" class="pill-btn">Flashcards</button>
+        </div>
+      </section>
 
-      <div class="card-actions">
-        <button id="prev-card">⬅️ Prev</button>
-        <button id="flip-card">🔄 Flip</button>
-        <button id="next-card">Next ➡️</button>
-      </div>
+      <!-- Timer View -->
+      <section id="timer-view" class="view">
+        <div class="timer-circle">
+          <div class="timer-progress"></div>
+          <div class="timer-display" id="timer-display">25:00</div>
+        </div>
+        <div class="controls">
+          <button id="pause-resume-btn" class="pill-btn">Pause</button>
+          <button id="reset-timer-btn" class="pill-btn">Reset</button>
+        </div>
+      </section>
 
-      <div class="card-actions">
-        <label><input type="checkbox" id="flagged-only-toggle" /> Show only flagged</label>
-        <button id="exit-study">🚪 Exit Study Mode</button>
-      </div>
-    </section>
+      <!-- Settings Modal -->
+      <section id="settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h2>Timer Settings</h2>
+          <form id="settings-form">
+            <label>Work:
+              <select id="work-duration">
+                <option value="900">15 min</option>
+                <option value="1500" selected>25 min</option>
+                <option value="2700">45 min</option>
+              </select>
+            </label>
+            <label>Short Break:
+              <select id="short-break-duration">
+                <option value="300" selected>5 min</option>
+                <option value="600">10 min</option>
+              </select>
+            </label>
+            <label>Long Break:
+              <select id="long-break-duration">
+                <option value="900" selected>15 min</option>
+                <option value="1500">25 min</option>
+              </select>
+            </label>
+            <label><input type="checkbox" id="alarm-toggle" checked /> Alarm On</label>
+            <div class="modal-actions">
+              <button type="submit" class="pill-btn">Confirm</button>
+              <button type="button" id="cancel-settings-btn" class="pill-btn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </section>
 
-  </main>
+      <!-- Last Settings Modal -->
+      <section id="last-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h2>Use Last Settings?</h2>
+          <div class="modal-actions">
+            <button id="use-last-btn" class="pill-btn">Use Last</button>
+            <button id="edit-settings-btn" class="pill-btn">Edit Settings</button>
+            <button id="cancel-last-btn" class="pill-btn">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Flashcards View -->
+      <section id="flash-view" class="view">
+        <div class="flash-header">
+          <div id="folder-select-box" class="dropdown">
+            <button id="folder-toggle" class="pill-btn">Select Set ▾</button>
+            <div id="folder-menu" class="dropdown-menu"></div>
+          </div>
+          <button id="add-flashcard-btn" class="pill-btn">Add New</button>
+        </div>
+
+        <div id="flashcard-grid" class="cards-grid"></div>
+
+        <div id="study-bar" class="study-bar hidden">
+          <button id="start-study-btn" class="pill-btn">Start Studying</button>
+        </div>
+
+        <button id="exit-flash-btn" class="pill-btn exit-btn">Exit</button>
+      </section>
+
+      <!-- Add Folder Modal -->
+      <section id="add-folder-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h3>New Folder</h3>
+          <input id="new-folder-name" placeholder="Folder Name"/>
+          <div class="modal-actions">
+            <button id="confirm-add-folder" class="pill-btn">Add</button>
+            <button id="cancel-add-folder" class="pill-btn">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Add Flashcard Modal -->
+      <section id="add-card-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h3>New Flashcard</h3>
+          <input id="new-question" placeholder="Question"/>
+          <input id="new-answer" placeholder="Answer"/>
+          <div class="modal-actions">
+            <button id="confirm-add-card" class="pill-btn">Add</button>
+            <button id="cancel-add-card" class="pill-btn">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Study Mode -->
+      <section id="study-view" class="view">
+        <div class="study-top-bar">
+          <span id="study-counter">0 / 0</span>
+          <button id="shuffle-btn" class="pill-btn">Shuffle</button>
+        </div>
+
+        <div id="study-card" class="flashcard">
+          <div class="card-inner">
+            <div class="card-front" id="study-front"></div>
+            <div class="card-back" id="study-back"></div>
+          </div>
+          <button id="flag-btn" class="flag-btn">🚩</button>
+        </div>
+
+        <div class="controls">
+          <button id="prev-btn" class="pill-btn">Prev</button>
+          <button id="exit-study-btn" class="pill-btn">Exit</button>
+          <button id="next-btn" class="pill-btn">Next</button>
+        </div>
+
+        <label><input type="checkbox" id="flagged-only-toggle" /> Show Flagged Only</label>
+      </section>
+
+    </main>
+
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
-
