@@ -277,3 +277,50 @@ body {
   margin: 1rem 0;
   font-size: 1.1rem;
 }
+
+/* ... previous variables and layout ... */
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+}
+.icon-btn svg {
+  width: 24px;
+  height: 24px;
+  transition: transform 0.2s;
+}
+.icon-btn:hover svg {
+  transform: scale(1.1);
+}
+
+/* Flashcard delete overrides */
+.delete-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  cursor: pointer;
+}
+
+/* Adjust positions for study flag button */
+#flag-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+/* Minor spacing and alignment polish */
+.cards-grid { gap: 12px; padding: 20px; }
+.study-bar { margin: 20px 0; }
+
+#theme-toggle svg {
+  width: 32px;
+  height: 32px;
+}
+
+#theme-toggle svg { width: 40px; height: 40px; }
+.icon-btn svg { width: 24px; height: 24px; }
+.flashcard { overflow: hidden; }
+#study-card { overflow: hidden; }

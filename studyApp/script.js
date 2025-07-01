@@ -26,48 +26,7 @@ function showModal(id) {
 }
 function closeModal(id) { $(id).style.display = 'none'; }
 
-// THEME
-$('theme-toggle').addEventListener('click', () => document.body.classList.toggle('dark'));
-
-// HOME BUTTONS
-$('start-btn').addEventListener('click', () => {
-  if (savedSettings) showModal('last-settings-modal');
-  else showModal('settings-modal');
-});
-
-$('flashcard-btn').addEventListener('click', () => {
-  switchView('flash-view');
-  buildFolderDropdown();
-});
-
-// SETTINGS
-$('cancel-settings-btn').addEventListener('click', () => closeModal('settings-modal'));
-$('cancel-last-btn').addEventListener('click', () => closeModal('last-settings-modal'));
-$('edit-settings-btn').addEventListener('click', () => { closeModal('last-settings-modal'); showModal('settings-modal'); });
-
-$('use-last-btn').addEventListener('click', () => {
-  applySettings(savedSettings);
-  startTimer();
-  closeModal('last-settings-modal');
-  switchView('timer-view');
-});
-
-$('settings-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const newSettings = {
-    work: parseInt($('work-duration').value),
-    shortBreak: parseInt($('short-break-duration').value),
-    longBreak: parseInt($('long-break-duration').value),
-    alarm: $('alarm-toggle').checked
-  };
-  savedSettings = newSettings;
-  localStorage.setItem('pomodoro-settings', JSON.stringify(savedSettings));
-  applySettings(newSettings);
-  startTimer();
-  closeModal('settings-modal');
-  switchView('timer-view');
-});
-
+// TIMER LOGIC
 function applySettings(settings) {
   Object.assign(timerState, settings);
   timerState.remaining = settings.work;
@@ -76,7 +35,18 @@ function applySettings(settings) {
   updateDisplays();
 }
 
-// TIMER
+function updateDisplays() {
+  const min = Math.floor(timerState.remaining / 60).toString().padStart(2, '0');
+  const sec = (timerState.remaining % 60).toString().padStart(2, '0');
+  $('timer-display').textContent = `${min}:${sec}`;
+  $('home-timer-display').textContent = `${min}:${sec}`;
+  const total = timerState[timerState.currentPhase];
+  const pct = 360 - ((timerState.remaining / total) * 360);
+  document.querySelectorAll('.timer-progress').forEach(el => {
+    el.style.background = `conic-gradient(var(--accent) ${pct}deg, var(--accent-soft) ${pct}deg 360deg)`;
+  });
+}
+
 function startTimer() {
   if (timerState.isRunning) return;
   timerState.isRunning = true;
@@ -103,18 +73,14 @@ function phaseChange() {
   startTimer();
 }
 
-function updateDisplays() {
-  const min = Math.floor(timerState.remaining / 60).toString().padStart(2, '0');
-  const sec = (timerState.remaining % 60).toString().padStart(2, '0');
-  $('timer-display').textContent = `${min}:${sec}`;
-  $('home-timer-display').textContent = `${min}:${sec}`;
-  const total = timerState[timerState.currentPhase];
-  const pct = 360 - ((timerState.remaining / total) * 360);
-  document.querySelectorAll('.timer-progress').forEach(el => {
-    el.style.background = `conic-gradient(var(--accent) ${pct}deg, var(--accent-soft) ${pct}deg 360deg)`;
-  });
-}
+// INIT
+updateDisplays();
 
+// EVENT HANDLERS — TIMER & HOME
+$('start-btn').addEventListener('click', () => {
+  if (savedSettings) showModal('last-settings-modal');
+  else showModal('settings-modal');
+});
 $('pause-resume-btn').addEventListener('click', () => {
   if (timerState.isRunning) {
     clearInterval(timer);
@@ -124,7 +90,6 @@ $('pause-resume-btn').addEventListener('click', () => {
     startTimer();
   }
 });
-
 $('reset-timer-btn').addEventListener('click', () => {
   clearInterval(timer);
   timerState.isRunning = false;
@@ -132,10 +97,35 @@ $('reset-timer-btn').addEventListener('click', () => {
   updateDisplays();
   switchView('home-view');
 });
+$('cancel-settings-btn').addEventListener('click', () => closeModal('settings-modal'));
+$('cancel-last-btn').addEventListener('click', () => closeModal('last-settings-modal'));
+$('edit-settings-btn').addEventListener('click', () => {
+  closeModal('last-settings-modal');
+  showModal('settings-modal');
+});
+$('use-last-btn').addEventListener('click', () => {
+  applySettings(savedSettings);
+  startTimer();
+  closeModal('last-settings-modal');
+  switchView('timer-view');
+});
+$('settings-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const newSettings = {
+    work: parseInt($('work-duration').value),
+    shortBreak: parseInt($('short-break-duration').value),
+    longBreak: parseInt($('long-break-duration').value),
+    alarm: $('alarm-toggle').checked
+  };
+  savedSettings = newSettings;
+  localStorage.setItem('pomodoro-settings', JSON.stringify(savedSettings));
+  applySettings(newSettings);
+  startTimer();
+  closeModal('settings-modal');
+  switchView('timer-view');
+});
 
-updateDisplays();
-
-// FOLDER DROPDOWN
+// FLASHCARDS
 function buildFolderDropdown() {
   const menu = $('folder-menu');
   menu.innerHTML = '';
@@ -160,20 +150,45 @@ function buildFolderDropdown() {
   }
 }
 
-$('folder-toggle').addEventListener('click', () => {
-  $('folder-menu').style.display = ($('folder-menu').style.display === 'block') ? 'none' : 'block';
-});
+function selectFolder(folder) {
+  lastFolder = folder;
+  localStorage.setItem('lastFolder', folder);
+  $('folder-toggle').textContent = folder + ' ▾';
+  $('folder-menu').style.display = 'none';
+  $('study-bar').classList.remove('hidden');
+  renderCards(folder);
+  updateStudyBarVisibility();
+}
 
-$('confirm-add-folder').addEventListener('click', () => {
-  const name = $('new-folder-name').value.trim();
-  if (!name || flashData.folders[name]) return;
-  flashData.folders[name] = [];
+function renderCards(folder) {
+  const grid = $('flashcard-grid');
+  grid.innerHTML = '';
+  flashData.folders[folder].forEach((card, idx) => {
+    const div = document.createElement('div');
+    div.className = 'flashcard';
+    div.textContent = card.question;
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn icon-btn';
+    delBtn.innerHTML = svgs.trash;
+    delBtn.addEventListener('click', () => deleteCard(folder, idx));
+    div.appendChild(delBtn);
+
+    grid.appendChild(div);
+    updateStudyBarVisibility();
+  });
+
+  if (flashData.folders[folder].length === 0) {
+    $('study-bar').classList.add('hidden');
+  }
+}
+
+function deleteCard(folder, index) {
+  if (!confirm("Delete this card?")) return;
+  flashData.folders[folder].splice(index, 1);
   saveFlash();
-  buildFolderDropdown();
-  closeModal('add-folder-modal');
-});
-
-$('cancel-add-folder').addEventListener('click', () => closeModal('add-folder-modal'));
+  renderCards(folder);
+}
 
 function deleteFolderPrompt() {
   if (!lastFolder) return alert("No folder selected.");
@@ -189,54 +204,28 @@ function deleteFolderPrompt() {
   }
 }
 
-function selectFolder(folder) {
-  lastFolder = folder;
-  localStorage.setItem('lastFolder', folder);
-  $('folder-toggle').textContent = folder + ' ▾';
-  $('folder-menu').style.display = 'none';
-  $('study-bar').classList.remove('hidden');
-  renderCards(folder);
-}
-
-function renderCards(folder) {
-  const grid = $('flashcard-grid');
-  grid.innerHTML = '';
-  flashData.folders[folder].forEach((card, index) => {
-    const div = document.createElement('div');
-    div.className = 'flashcard';
-    div.textContent = card.question;
-
-    const del = document.createElement('button');
-    del.className = 'delete-btn';
-    del.textContent = '🗑';
-    del.addEventListener('click', () => deleteCard(folder, index));
-    div.appendChild(del);
-
-    grid.appendChild(div);
-  });
-
-  if (flashData.folders[folder].length === 0) {
-    $('study-bar').classList.add('hidden');
-  }
-}
-
-function deleteCard(folder, index) {
-  if (!confirm("Delete this card?")) return;
-  flashData.folders[folder].splice(index, 1);
-  saveFlash();
-  renderCards(folder);
-}
-
 function saveFlash() {
   localStorage.setItem('flashData', JSON.stringify(flashData));
 }
 
-// ADDING FLASHCARDS
+// FLASHCARD UI EVENTS
+$('flashcard-btn').addEventListener('click', () => {
+  switchView('flash-view');
+  buildFolderDropdown();
+});
 $('add-flashcard-btn').addEventListener('click', () => {
   if (!lastFolder) return alert("Please select a folder first.");
   showModal('add-card-modal');
 });
-
+$('confirm-add-folder').addEventListener('click', () => {
+  const name = $('new-folder-name').value.trim();
+  if (!name || flashData.folders[name]) return;
+  flashData.folders[name] = [];
+  saveFlash();
+  buildFolderDropdown();
+  closeModal('add-folder-modal');
+});
+$('cancel-add-folder').addEventListener('click', () => closeModal('add-folder-modal'));
 $('confirm-add-card').addEventListener('click', () => {
   const q = $('new-question').value.trim();
   const a = $('new-answer').value.trim();
@@ -248,11 +237,19 @@ $('confirm-add-card').addEventListener('click', () => {
   $('new-answer').value = '';
   closeModal('add-card-modal');
 });
-
 $('cancel-add-card').addEventListener('click', () => closeModal('add-card-modal'));
 $('exit-flash-btn').addEventListener('click', () => switchView('home-view'));
 
 // STUDY MODE
+function renderStudyCard() {
+  const card = studyList[studyIndex];
+  $('study-front').textContent = card.question;
+  $('study-back').textContent = card.answer;
+  $('study-card').classList.remove('flipped');
+  $('study-counter').textContent = `${studyIndex+1} / ${studyList.length}`;
+  $('icon-flag').innerHTML = card.flagged ? svgs['flagged'] : svgs['flag'];
+}
+
 $('start-study-btn').addEventListener('click', () => {
   if (!lastFolder) return;
   studyList = [...flashData.folders[lastFolder]];
@@ -261,43 +258,77 @@ $('start-study-btn').addEventListener('click', () => {
   switchView('study-view');
 });
 
-function renderStudyCard() {
-  const card = studyList[studyIndex];
-  $('study-front').textContent = card.question;
-  $('study-back').textContent = card.answer;
-  $('flag-btn').textContent = card.flagged ? '🚩' : '⚐';
-  $('study-card').classList.remove('flipped');
-  $('study-counter').textContent = `${studyIndex+1} / ${studyList.length}`;
-}
-
 $('study-card').addEventListener('click', () => {
   $('study-card').classList.toggle('flipped');
 });
-
-$('flag-btn').addEventListener('click', () => {
-  const card = studyList[studyIndex];
-  card.flagged = !card.flagged;
-  $('flag-btn').textContent = card.flagged ? '🚩' : '⚐';
-  saveFlash();
-});
-
 $('next-btn').addEventListener('click', () => {
-  if (studyIndex < studyList.length-1) studyIndex++;
+  if (studyIndex < studyList.length - 1) studyIndex++;
   renderStudyCard();
 });
-
 $('prev-btn').addEventListener('click', () => {
   if (studyIndex > 0) studyIndex--;
   renderStudyCard();
 });
-
 $('exit-study-btn').addEventListener('click', () => switchView('flash-view'));
-
 $('shuffle-btn').addEventListener('click', () => {
-  for (let i = studyList.length-1; i>0; i--) {
-    const j = Math.floor(Math.random()*(i+1));
+  for (let i = studyList.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
     [studyList[i], studyList[j]] = [studyList[j], studyList[i]];
   }
   studyIndex = 0;
   renderStudyCard();
 });
+
+// SVG LOADER
+const svgs = {};
+const svgFiles = ['Trash', 'Flag', 'Flagged', 'Light-mode', 'Dark-mode'];
+svgFiles.forEach(name => {
+  fetch(`assets/${name}.svg`)
+    .then(r => r.text())
+    .then(data => svgs[name.toLowerCase()] = data)
+    .catch(err => console.error(`Failed to load ${name}:`, err));
+});
+
+function waitForSVGs(callback) {
+  const check = setInterval(() => {
+    if (Object.keys(svgs).length === svgFiles.length) {
+      clearInterval(check);
+      callback();
+    }
+  }, 50);
+}
+
+// Fix #1: Make "Select Set" dropdown work again
+$('folder-toggle').addEventListener('click', () => {
+  const menu = $('folder-menu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+});
+
+// Fix #2: Restore "Start Studying" visibility logic
+function updateStudyBarVisibility() {
+  if (lastFolder && flashData.folders[lastFolder].length > 0) {
+    $('study-bar').classList.remove('hidden');
+  } else {
+    $('study-bar').classList.add('hidden');
+  }
+}
+
+
+// THEME & FLAG BUTTONS
+waitForSVGs(() => {
+  const dark = document.body.classList.contains('dark');
+  $('icon-theme').innerHTML = svgs[dark ? 'light-mode' : 'dark-mode'];
+
+  $('theme-toggle').addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark');
+    $('icon-theme').innerHTML = svgs[isDark ? 'light-mode' : 'dark-mode'];
+  });
+
+  $('flag-btn').addEventListener('click', () => {
+    const card = studyList[studyIndex];
+    card.flagged = !card.flagged;
+    saveFlash();
+    renderStudyCard();
+  });
+});
+
